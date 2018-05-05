@@ -1179,3 +1179,123 @@ plt.show()
 
 ![png](output_20_0.png)
 
+
+# Using k-fold Cross Validation
+
+
+```python
+from sklearn.model_selection import cross_val_score, KFold
+
+# Redefine our function to use k-fold cross validation
+def knn_train_test(train_cols, target_col, df, k_list, k_folds):
+    # Randomize our data
+    np.random.seed(1)
+    permuted_index = np.random.permutation(df.index)
+    df = df.reindex(permuted_index)
+
+    avg_rmses = dict()
+    for k in k_list:
+        fold_rmses = dict()
+        for fold in k_folds:
+            # Instantiate our KFold Class
+            kf = KFold(fold, shuffle=True, random_state=1)
+
+            # Instantiate our Kth Neighbor class
+            knn = KNeighborsRegressor(n_neighbors=k)
+
+            # Perform the K Fold validation and get the results
+            mses = cross_val_score(knn, df[train_cols], cars[target_col], scoring="neg_mean_squared_error", cv=kf)
+
+            # Calculate the rmse -> sqrt(mse)
+            rmses = np.sqrt(np.absolute(mses))
+
+            # Average the rmse results
+            avg_rmse = np.mean(rmses)
+            fold_rmses[fold] = avg_rmse
+
+    return fold_rmses
+```
+
+
+```python
+kfolds = [i for i in range(2,25,2)]
+kfold_predictions = dict()
+
+# Call our kfold function testing every other kfold value up to 24
+for col in top_three:
+    best_n = int(col.split()[1])
+    kfold_predictions[col] = (
+        knn_train_test (
+            univariate_sorted.loc[:best_n-1, "feature"], 
+            'price', 
+            cars, 
+            # 5 is a reasonably optimized k value according to previous graph
+            [5],
+            kfolds
+        )
+     )
+kfold_predictions
+```
+
+
+
+
+    {'best 2 features': {2: 8677.2306403539224,
+      4: 8855.9297339869481,
+      6: 8640.1492249324419,
+      8: 8483.6712092410453,
+      10: 8608.6622156310677,
+      12: 8407.551606723935,
+      14: 8561.6065702238357,
+      16: 8438.4258809798139,
+      18: 8520.3527650964843,
+      20: 8458.7492062329275,
+      22: 8278.8608313500572,
+      24: 8070.9123145945168},
+     'best 4 features': {2: 8943.9375189777547,
+      4: 8943.2033305158911,
+      6: 8828.0625907236026,
+      8: 8804.0666886328909,
+      10: 8868.5133028984528,
+      12: 8701.1028233523593,
+      14: 8756.7433267081396,
+      16: 8642.8376645778953,
+      18: 8689.1016862793258,
+      20: 8646.2505975425302,
+      22: 8558.1245345234511,
+      24: 8401.8193753998203},
+     'best 5 features': {2: 9226.650475936407,
+      4: 9048.6334015701104,
+      6: 8902.5196256697818,
+      8: 8853.4524865437888,
+      10: 9026.0081024094034,
+      12: 8783.9155758868528,
+      14: 8885.4023755974322,
+      16: 8833.4444944745192,
+      18: 8842.662978664086,
+      20: 8740.1073988084354,
+      22: 8615.04640981999,
+      24: 8525.4282447773094}}
+
+
+
+
+```python
+# Plot the results for each of the columns
+for var in kfold_predictions:
+    df_col = pd.DataFrame.from_dict(kfold_predictions[var], orient="index")
+    df_col = df_col.sort_index()
+    plt.plot(df_col)
+
+
+plt.tick_params(right="off", top="off")
+plt.legend(labels=kfold_predictions.keys(), loc='upper right')
+plt.title("AVG RMSE VS k-fold (k value = 5) ")
+plt.xlabel("k fold")
+plt.ylabel("AVG RMSE")
+plt.show()
+```
+
+
+![png](output_24_0.png)
+
